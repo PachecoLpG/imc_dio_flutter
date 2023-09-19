@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:imc_dio_flutter/imc.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:imc_dio_flutter/calcular_imc.dart';
+import 'package:imc_dio_flutter/imc_list_page.dart';
+import 'package:imc_dio_flutter/models/imc.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Hive.initFlutter();
+
   runApp(const MyApp());
 }
 
@@ -16,7 +23,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'IMC - Flutter Dio'),
+      home: const MyHomePage(title: 'IMC - Flutter Dio com Hive'),
     );
   }
 }
@@ -27,33 +34,44 @@ class MyHomePage extends StatefulWidget {
   final String title;
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<MyHomePage> createState() => MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class MyHomePageState extends State<MyHomePage> {
   TextEditingController pesoController = TextEditingController(text: '100');
   TextEditingController alturaController = TextEditingController(text: '1.75');
   final _formKey = GlobalKey<FormState>();
-  final List<Imc> imcList = [];
-  late Imc imc;
+  double? resultado;
+  late Box<Imc> imcBox;
 
-  void calcular() {
+  @override
+  void initState() {
+    super.initState();
+    openBox();
+  }
+
+  void openBox() async {
+    if (!Hive.isAdapterRegistered(0)) {
+      Hive.registerAdapter(ImcAdapter());
+    }
+
+    imcBox = await Hive.openBox<Imc>('imcBox');
+  }
+
+  Future<void> calcular() async {
     if (_formKey.currentState!.validate() == false) {
       return;
     }
 
-    imc = Imc(
+    Imc imc = Imc(
         altura: double.parse(alturaController.text),
         peso: double.parse(pesoController.text));
 
-    imc.calcularImc();
+    imc.resultado = calcularImc(imc.peso, imc.altura);
+    imcBox.add(imc);
 
-    adicionarImc(imc);
-  }
-
-  void adicionarImc(Imc imc) {
     setState(() {
-      imcList.add(imc);
+      resultado = imc.resultado!;
     });
   }
 
@@ -65,14 +83,9 @@ class _MyHomePageState extends State<MyHomePage> {
     return null;
   }
 
-  void limparLista() {
-    if (imcList.isEmpty) {
-      return;
-    }
-
-    setState(() {
-      imcList.clear();
-    });
+  Future<void> onPressed() async {
+    await Navigator.push(
+        context, MaterialPageRoute(builder: (_) => const ImcListPage()));
   }
 
   @override
@@ -83,83 +96,47 @@ class _MyHomePageState extends State<MyHomePage> {
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
           title: Text(widget.title),
         ),
-        body: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Center(
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: <Widget>[
-                    TextFormField(
-                      keyboardType: TextInputType.number,
-                      validator: (value) => validate(value),
-                      controller: pesoController,
-                      decoration:
-                          const InputDecoration(hintText: 'Informe o peso'),
-                    ),
-                    TextFormField(
-                      keyboardType: TextInputType.number,
-                      validator: (value) => validate(value),
-                      controller: alturaController,
-                      decoration:
-                          const InputDecoration(hintText: 'Informe a altura'),
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton.icon(
-                      onPressed: calcular,
-                      icon: const Icon(Icons.calculate),
-                      label: const Text('Calcular IMC'),
-                    ),
-                    const SizedBox(height: 8),
-                    ElevatedButton.icon(
-                      onPressed: limparLista,
-                      icon: const Icon(Icons.cleaning_services_outlined),
-                      label: const Text('Limpar lista'),
-                    ),
-                    const SizedBox(height: 8),
-                    const Divider(),
-                    const Text('Resultados'),
-                    ListView(
-                      physics: const NeverScrollableScrollPhysics(),
-                      shrinkWrap: true,
-                      children:
-                          imcList.map((Imc e) => _ImcTile(imc: e)).toList(),
-                    ),
-                  ],
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              children: <Widget>[
+                TextFormField(
+                  keyboardType: TextInputType.number,
+                  validator: (value) => validate(value),
+                  controller: pesoController,
+                  decoration: const InputDecoration(hintText: 'Informe o peso'),
                 ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ImcTile extends StatelessWidget {
-  const _ImcTile({required this.imc});
-
-  final Imc imc;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.all(8),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            Column(
-              children: [
-                Text('Peso: ${imc.peso}'),
-                Text('Altura: ${imc.altura}'),
+                TextFormField(
+                  keyboardType: TextInputType.number,
+                  validator: (value) => validate(value),
+                  controller: alturaController,
+                  decoration:
+                      const InputDecoration(hintText: 'Informe a altura'),
+                ),
+                const SizedBox(height: 16),
+                if (resultado != null)
+                  Text(
+                    'Resultado : $resultado',
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                if (resultado != null) const SizedBox(height: 8),
+                ElevatedButton.icon(
+                  onPressed: calcular,
+                  icon: const Icon(Icons.calculate),
+                  label: const Text('Calcular IMC'),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: onPressed,
+                  icon: const Icon(Icons.menu),
+                  label: const Text('Resultados armazenados'),
+                ),
               ],
             ),
-            Text('Resultado: ${imc.resultado}'),
-          ],
+          ),
         ),
       ),
     );
