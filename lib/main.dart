@@ -38,8 +38,8 @@ class MyHomePage extends StatefulWidget {
 }
 
 class MyHomePageState extends State<MyHomePage> {
-  TextEditingController pesoController = TextEditingController(text: '100');
-  TextEditingController alturaController = TextEditingController(text: '1.75');
+  TextEditingController pesoController = TextEditingController();
+  TextEditingController alturaController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   double? resultado;
   late Box<Imc> imcBox;
@@ -75,9 +75,13 @@ class MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  String? validate(String? value) {
+  String? validate(String? value, {bool ehPeso = false}) {
     if (value == null || value.isEmpty) {
       return 'Informe o valor do campo';
+    }
+
+    if (ehPeso == false && double.parse(value) > 3) {
+      return 'Informe uma altura valida';
     }
 
     return null;
@@ -104,7 +108,7 @@ class MyHomePageState extends State<MyHomePage> {
               children: <Widget>[
                 TextFormField(
                   keyboardType: TextInputType.number,
-                  validator: (value) => validate(value),
+                  validator: (value) => validate(value, ehPeso: true),
                   controller: pesoController,
                   decoration: const InputDecoration(hintText: 'Informe o peso'),
                 ),
