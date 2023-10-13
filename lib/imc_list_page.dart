@@ -26,35 +26,33 @@ class _ImcListPageState extends State<ImcListPage> {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: Center(
-        child: Scaffold(
-          appBar: AppBar(
-            title: const Text('Resultados armazenados'),
-            backgroundColor: Colors.blue.shade100,
-            actions: [
-              IconButton(
-                  onPressed: clearBox,
-                  icon: const Icon(Icons.cleaning_services_outlined))
-            ],
-          ),
-          body: ValueListenableBuilder<Box<Imc>>(
-              valueListenable: box.listenable(),
-              builder: (_, imcBox, __) {
-                if (imcBox.isEmpty) {
-                  return const Center(
-                    child: Text('Armazenamento vazio'),
-                  );
-                }
-
-                return ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: box.length,
-                    itemBuilder: (_, index) {
-                      final imc = imcBox.getAt(index);
-                      return _ImcTile(imc: imc!);
-                    });
-              }),
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Resultados armazenados'),
+          backgroundColor: Colors.blue.shade100,
+          actions: [
+            IconButton(
+                onPressed: clearBox,
+                icon: const Icon(Icons.cleaning_services_outlined))
+          ],
         ),
+        body: ValueListenableBuilder<Box<Imc>>(
+            valueListenable: box.listenable(),
+            builder: (_, imcBox, __) {
+              if (imcBox.isEmpty) {
+                return const Center(
+                  child: Text('Armazenamento vazio'),
+                );
+              }
+
+              return ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: box.length,
+                  itemBuilder: (_, index) {
+                    final imc = imcBox.getAt(index);
+                    return _ImcTile(imc: imc!);
+                  });
+            }),
       ),
     );
   }
